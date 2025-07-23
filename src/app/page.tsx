@@ -1,103 +1,561 @@
-import Image from "next/image";
+'use client';
+import { useState, useEffect, useRef } from "react";
+import PlayerCard from "./components/PlayerCard";
+import BuyInModal from "./components/BuyInModal";
+import SettingsModal from "./components/SettingsModal";
+import { triggerLight, triggerPlayerChange } from "./config/lights";
+
+const POINT_NUMBERS = [4, 5, 6, 8, 9, 10];
+const ALL_NUMBERS = Array.from({ length: 11 }, (_, i) => i + 2);
+
+// Key mapping for numbers
+const getKeyForNumber = (num: number): string => {
+  if (num >= 2 && num <= 9) return String(num);
+  if (num === 10) return '0';
+  if (num === 11) return '1';
+  if (num === 12) return '.';
+  return '';
+};
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [point, setPoint] = useState<number | null>(null);
+  // History now tracks number and result
+  type RollResult = 'win' | 'loss' | 'normal';
+  const [history, setHistory] = useState<{num: number, result: RollResult}[]>([]);
+  const [hitCounts, setHitCounts] = useState<{ [key: number]: number }>(() => {
+    const counts: { [key: number]: number } = {};
+    ALL_NUMBERS.forEach((n) => (counts[n] = 0));
+    return counts;
+  });
+  const [winLoss, setWinLoss] = useState<null | 'win' | 'loss'>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Previous game state for undo functionality
+  type GameState = {
+    point: number | null;
+    history: {num: number, result: RollResult}[];
+    hitCounts: { [key: number]: number };
+    winLoss: null | 'win' | 'loss';
+    shouldSwitchPlayer: boolean;
+    currentLight: 'default' | 'win' | 'loss';
+  };
+  const [previousState, setPreviousState] = useState<GameState | null>(null);
+
+  const PLAYER_POSITIONS = [
+    { id: 0, label: 'P1', group: 'left' },
+    { id: 1, label: 'P2', group: 'left' },
+    { id: 2, label: 'P3', group: 'topLeft' },
+    { id: 3, label: 'P4', group: 'topLeft' },
+    { id: 4, label: 'P5', group: 'topRight' },
+    { id: 5, label: 'P6', group: 'topRight' },
+    { id: 6, label: 'P7', group: 'right' },
+    { id: 7, label: 'P8', group: 'right' },
+  ];
+  // Player state: name, buy-in, enabled
+  const initialPlayers = [
+    { id: 1, name: '', buyIn: '', enabled: false },
+    { id: 2, name: '', buyIn: '', enabled: false },
+    { id: 3, name: '', buyIn: '', enabled: false },
+    { id: 4, name: '', buyIn: '', enabled: false },
+    { id: 5, name: '', buyIn: '', enabled: false },
+    { id: 6, name: '', buyIn: '', enabled: false },
+    { id: 7, name: '', buyIn: '', enabled: false },
+    { id: 8, name: '', buyIn: '', enabled: false },
+  ];
+  const [players, setPlayers] = useState(initialPlayers);
+
+  // Shooter must be enabled
+  const [shooter, setShooter] = useState<number>(1);
+  // Track if player should switch after a loss
+  const [shouldSwitchPlayer, setShouldSwitchPlayer] = useState<boolean>(false);
+
+  // Modal state for buy-in
+  const [buyInModal, setBuyInModal] = useState<{ open: boolean; playerId: number | null; value: string }>({ open: false, playerId: null, value: '' });
+  const buyInInputRef = useRef<HTMLInputElement>(null);
+
+  // Settings state
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
+  const [winLightDuration, setWinLightDuration] = useState<number>(3);
+  const [lossLightDuration, setLossLightDuration] = useState<number>(2);
+
+  // Light status state
+  const [currentLight, setCurrentLight] = useState<'default' | 'win' | 'loss'>('default');
+
+  // State for keyboard press animation
+  const [keyPressed, setKeyPressed] = useState<number | null>(null);
+
+  // Save current game state
+  const saveGameState = () => {
+    const currentState: GameState = {
+      point,
+      history: [...history],
+      hitCounts: { ...hitCounts },
+      winLoss,
+      shouldSwitchPlayer,
+      currentLight
+    };
+    setPreviousState(currentState);
+  };
+
+  // Undo last action
+  const undoLastAction = () => {
+    if (!previousState) return;
+    
+    setPoint(previousState.point);
+    setHistory(previousState.history);
+    setHitCounts(previousState.hitCounts);
+    setWinLoss(previousState.winLoss);
+    setShouldSwitchPlayer(previousState.shouldSwitchPlayer);
+    setCurrentLight(previousState.currentLight);
+    
+    // Clear the previous state after undoing
+    setPreviousState(null);
+  };
+
+  // Open modal for a player
+  const openBuyInModal = (id: number, currentValue: string) => {
+    setBuyInModal({ open: true, playerId: id, value: currentValue });
+  };
+  // Close modal
+  const closeBuyInModal = () => setBuyInModal({ open: false, playerId: null, value: '' });
+  // Save modal value
+  const saveBuyInModal = () => {
+    if (buyInModal.playerId !== null) {
+      handlePlayerChange(buyInModal.playerId, 'buyIn', buyInModal.value);
+    }
+    closeBuyInModal();
+  };
+  // Increment modal value
+  const incrementBuyIn = (amount: number) => {
+    setBuyInModal((prev) => {
+      const current = parseInt(prev.value || '0', 10);
+      return { ...prev, value: String(current + amount) };
+    });
+  };
+  // Focus input when modal opens
+  useEffect(() => {
+    if (buyInModal.open && buyInInputRef.current) {
+      buyInInputRef.current.focus();
+    }
+  }, [buyInModal.open]);
+
+  const handleNumberClick = (num: number) => {
+    // Determine result for history
+    let result: RollResult = 'normal';
+    if (point === null) {
+      if ((num === 7 || num === 11) || (POINT_NUMBERS.includes(num))) {
+        if (num === 7 || num === 11) result = 'win';
+      } else if ([2, 3, 12].includes(num)) {
+        result = 'loss';
+      }
+    } else {
+      if (num === 7) {
+        result = 'loss';
+      } else if (POINT_NUMBERS.includes(num) && point === num) {
+        result = 'win';
+      }
+    }
+    
+    // Save current state before making changes
+    saveGameState();
+    
+    setHistory((prev) => [{num, result}, ...prev.slice(0, 19)]); // keep last 20
+    setHitCounts((prev) => ({ ...prev, [num]: prev[num] + 1 }));
+
+    // Clear swap button when any number is rolled
+    setShouldSwitchPlayer(false);
+
+    // Reset win/loss by default
+    setWinLoss(null);
+
+    if (point === null) {
+      // No point established
+      if (POINT_NUMBERS.includes(num)) {
+        setPoint(num); // Set new point
+      } else if (num === 7 || num === 11) {
+        setWinLoss('win');
+        setCurrentLight('win');
+        triggerLight('win');
+        console.log('WIN');
+        // After win duration, return to default
+        setTimeout(() => {
+          setCurrentLight('default');
+          triggerLight('default');
+        }, winLightDuration * 1000);
+      } else if ([2, 3, 12].includes(num)) {
+        setWinLoss('loss');
+        setCurrentLight('loss');
+        triggerLight('loss');
+        console.log('LOSS');
+        // After loss duration, return to default
+        setTimeout(() => {
+          setCurrentLight('default');
+          triggerLight('default');
+        }, lossLightDuration * 1000);
+      }
+      // Other numbers do nothing
+    } else {
+      // Point is established
+      if (POINT_NUMBERS.includes(num)) {
+        if (point === num) {
+          setWinLoss('win');
+          setCurrentLight('win');
+          console.log('WIN');
+          setPoint(null); // Deselect if same point is rolled again
+          triggerLight('win');
+          // After win duration, return to default
+          setTimeout(() => {
+            setCurrentLight('default');
+            triggerLight('default');
+          }, winLightDuration * 1000);
+        }
+        // If another point is on, do nothing (cannot change point except by hitting same or 7)
+      } else if (num === 7) {
+        setWinLoss('loss');
+        setCurrentLight('loss');
+        console.log('LOSS');
+        setPoint(null); // Clear point on 7
+        triggerLight('loss');
+        // After loss duration, return to default
+        setTimeout(() => {
+          setCurrentLight('default');
+          triggerLight('default');
+        }, lossLightDuration * 1000);
+        // Set flag to show swap button instead of auto-advancing
+        if (players.filter(p => p.enabled).length > 1) {
+          setShouldSwitchPlayer(true);
+        }
+      }
+      // Other numbers do nothing
+    }
+  };
+
+  // Keyboard event handler
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Don't handle if modals are open or if typing in input fields
+      if (buyInModal.open || settingsOpen) return;
+      
+      const key = event.key;
+      const code = event.code;
+      let targetNumber: number | null = null;
+      
+      // Handle both regular number keys and numpad keys
+      if (key >= '2' && key <= '9') {
+        targetNumber = parseInt(key);
+      } else if (key === '0' || code === 'Numpad0') {
+        targetNumber = 10;
+      } else if (key === '1' || code === 'Numpad1') {
+        targetNumber = 11;
+      } else if (key === '.' || code === 'NumpadDecimal') {
+        targetNumber = 12;
+      } else if (code === 'Numpad2') {
+        targetNumber = 2;
+      } else if (code === 'Numpad3') {
+        targetNumber = 3;
+      } else if (code === 'Numpad4') {
+        targetNumber = 4;
+      } else if (code === 'Numpad5') {
+        targetNumber = 5;
+      } else if (code === 'Numpad6') {
+        targetNumber = 6;
+      } else if (code === 'Numpad7') {
+        targetNumber = 7;
+      } else if (code === 'Numpad8') {
+        targetNumber = 8;
+      } else if (code === 'Numpad9') {
+        targetNumber = 9;
+      }
+      
+      if (targetNumber) {
+        // Trigger visual feedback
+        setKeyPressed(targetNumber);
+        setTimeout(() => setKeyPressed(null), 150);
+        
+        handleNumberClick(targetNumber);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [buyInModal.open, settingsOpen, point]);
+
+  // Helper to advance shooter to next enabled player
+  const advanceShooter = () => {
+    if (players.filter(p => p.enabled).length <= 1) return; // Only advance if more than one enabled
+    const currentIdx = players.findIndex(p => p.id === shooter);
+    let nextIdx = (currentIdx + 1) % players.length;
+    while (!players[nextIdx].enabled || players[nextIdx].id === shooter) {
+      nextIdx = (nextIdx + 1) % players.length;
+    }
+    triggerPlayerChange(players[nextIdx].id);
+    setShooter(players[nextIdx].id);
+    setShouldSwitchPlayer(false);
+  };
+
+  // Manual shooter selection
+  const handleShooterSelect = (id: number) => {
+    setShooter(id);
+    setShouldSwitchPlayer(false);
+  };
+
+  const handlePlayerChange = (id: number, field: 'name' | 'buyIn' | 'enabled', value: string | boolean) => {
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, [field]: value } : p
+      )
+    );
+  };
+
+  // If the current shooter is disabled, auto-advance to the next enabled player
+  useEffect(() => {
+    const current = players.find((p) => p.id === shooter);
+    if (!current || !current.enabled) {
+      const next = players.find((p) => p.enabled);
+      if (next) setShooter(next.id);
+    }
+  }, [players, shooter]);
+
+  // For bar graph
+  const maxHits = Math.max(...Object.values(hitCounts));
+
+  return (
+    <>
+      <div className="min-h-screen w-full font-sans flex flex-col items-center bg-gradient-to-br from-gray-900 to-gray-700">
+        <div className="w-full max-w-screen-2xl mx-auto flex flex-col items-center p-4 gap-8">
+          <h1 className="text-3xl font-extrabold text-white drop-shadow">DCC Craps Table</h1>
+          <div className="w-full max-w-6xl">
+            <div className="flex flex-row gap-6 w-full overflow-x-auto justify-center py-2">
+              {ALL_NUMBERS.map((num) => {
+                const isPoint = point === num && POINT_NUMBERS.includes(num);
+                return (
+                  <div key={num} className="flex flex-col items-center">
+                    <button
+                      className={`w-20 h-20 rounded-3xl text-3xl font-extrabold border-4 shadow-lg transition-all duration-150 flex items-center justify-center
+                        ${isPoint ? "bg-yellow-300 border-yellow-500 text-black scale-105" : "bg-gray-800 border-gray-600 text-white hover:bg-gray-600 active:scale-95"}
+                        ${keyPressed === num ? "scale-95 bg-gray-600" : ""}
+                      `}
+                      onClick={() => {
+                        handleNumberClick(num);
+                      }}
+                      aria-label={`Roll ${num}`}
+                    >
+                      {num}
+                    </button>
+                    <div className="text-xs text-gray-500 mt-1 font-mono">
+                      {getKeyForNumber(num)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex flex-col md:flex-row gap-8 w-full max-w-7xl px-2 overflow-x-auto">
+            {/* Combined History and Graph */}
+            <div className="flex-[1.2] bg-gray-800 rounded-xl p-6 shadow-md min-w-[320px] flex flex-col">
+              <div className="text-lg text-white mb-2">
+                {point ? (
+                  <span>
+                    Point is <span className="font-bold text-yellow-300">{point}</span>
+                  </span>
+                ) : (
+                  <span>No point set</span>
+                )}
+              </div>
+              {winLoss && (
+                <div className={`mb-2 text-lg font-bold ${winLoss === 'win' ? 'text-green-400' : 'text-red-400'}`}>{winLoss === 'win' ? 'WIN!' : 'LOSS'}</div>
+              )}
+              <div className="flex justify-between items-center mb-1">
+                <div className="text-white text-base font-semibold">History</div>
+                <div className="flex gap-2">
+                  <button
+                    className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={undoLastAction}
+                    disabled={!previousState}
+                    title="Undo last roll"
+                  >
+                    Undo
+                  </button>
+                  <button
+                    className="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
+                    onClick={() => {
+                      setHistory([]);
+                      setHitCounts(() => {
+                        const counts: { [key: number]: number } = {};
+                        ALL_NUMBERS.forEach((n) => (counts[n] = 0));
+                        return counts;
+                      });
+                      setPreviousState(null);
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 min-h-[40px] mb-4">
+                {history.length === 0 ? (
+                  <span className="text-gray-400">No rolls yet</span>
+                ) : (
+                  history.map((h, i) => (
+                    <span
+                      key={i}
+                      className={`px-2 py-1 rounded-lg text-lg font-mono border-2
+                        ${h.result === 'win' ? "border-green-500 bg-green-100 text-green-800" :
+                          h.result === 'loss' && h.num === 7 ? "border-red-500 bg-red-100 text-red-700" :
+                          "border-gray-500 bg-gray-900 text-white"}
+                      `}
+                    >
+                      {h.num}
+                    </span>
+                  ))
+                )}
+              </div>
+              <div className="text-white text-base mb-2 font-semibold">Number Frequency</div>
+              <div className="flex flex-col gap-1">
+                {ALL_NUMBERS.map((num) => (
+                  <div key={num} className="flex items-center gap-2 h-9">
+                    <span className="w-6 text-right text-sm text-gray-300">{num}</span>
+                    <div className="flex-1 h-4 bg-gray-700 rounded">
+                      <div
+                        className="h-4 rounded bg-green-400 transition-all"
+                        style={{ width: `${maxHits ? (hitCounts[num] / maxHits) * 100 : 0}%` }}
+                      ></div>
+                    </div>
+                    <span className="w-6 text-left text-sm text-gray-200">{hitCounts[num]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Player Selector as large box */}
+            <div className="flex-[2] bg-gray-800 rounded-xl p-8 shadow-md min-w-[400px] flex flex-col items-center">
+              <div className="flex justify-between items-center mb-4 w-full">
+                <div className="text-white text-2xl font-semibold">Shooter & Players</div>
+                <button
+                  className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+                  onClick={() => {
+                    setPlayers(initialPlayers);
+                    setShooter(1);
+                  }}
+                >
+                  Clear Board
+                </button>
+              </div>
+              <div className="flex flex-col items-center gap-4 w-full">
+                {/* Top row: 3 4 5 6 */}
+                <div className="flex flex-row gap-6 mb-4 w-full justify-center">
+                  {[3,4,5,6].map((id) => (
+                    <PlayerCard
+                      key={id}
+                      player={players.find((p) => p.id === id)!}
+                      isShooter={shooter === id}
+                      onShooterSelect={handleShooterSelect}
+                      onNameChange={(id, name) => handlePlayerChange(id, 'name', name)}
+                      onBuyInClick={openBuyInModal}
+                      onEnabledChange={(id, enabled) => handlePlayerChange(id, 'enabled', enabled)}
+                    />
+                  ))}
+                </div>
+                {/* Middle row: 2 (left), 7 (right) */}
+                <div className="flex flex-row gap-32 mb-4 w-full justify-between">
+                  <PlayerCard
+                    player={players.find((p) => p.id === 2)!}
+                    isShooter={shooter === 2}
+                    onShooterSelect={handleShooterSelect}
+                    onNameChange={(id, name) => handlePlayerChange(id, 'name', name)}
+                    onBuyInClick={openBuyInModal}
+                    onEnabledChange={(id, enabled) => handlePlayerChange(id, 'enabled', enabled)}
+                  />
+                  <PlayerCard
+                    player={players.find((p) => p.id === 7)!}
+                    isShooter={shooter === 7}
+                    onShooterSelect={handleShooterSelect}
+                    onNameChange={(id, name) => handlePlayerChange(id, 'name', name)}
+                    onBuyInClick={openBuyInModal}
+                    onEnabledChange={(id, enabled) => handlePlayerChange(id, 'enabled', enabled)}
+                  />
+                </div>
+                {/* Bottom row: 1 (left), 8 (right) */}
+                <div className="flex flex-row gap-32 w-full justify-between">
+                  <PlayerCard
+                    player={players.find((p) => p.id === 1)!}
+                    isShooter={shooter === 1}
+                    onShooterSelect={handleShooterSelect}
+                    onNameChange={(id, name) => handlePlayerChange(id, 'name', name)}
+                    onBuyInClick={openBuyInModal}
+                    onEnabledChange={(id, enabled) => handlePlayerChange(id, 'enabled', enabled)}
+                  />
+                  <PlayerCard
+                    player={players.find((p) => p.id === 8)!}
+                    isShooter={shooter === 8}
+                    onShooterSelect={handleShooterSelect}
+                    onNameChange={(id, name) => handlePlayerChange(id, 'name', name)}
+                    onBuyInClick={openBuyInModal}
+                    onEnabledChange={(id, enabled) => handlePlayerChange(id, 'enabled', enabled)}
+                  />
+                </div>
+              </div>
+              {/* Swap Players Button */}
+              {shouldSwitchPlayer && (
+                <div className="flex justify-center mt-4">
+                  <button
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-lg"
+                    onClick={advanceShooter}
+                  >
+                    Swap Players?
+                  </button>
+                </div>
+              )}
+              
+              {/* Light Status Display */}
+              <div className="mt-6 p-4 bg-gray-700 rounded-lg -mb-2">
+                <div className="text-white text-center mb-2 font-semibold">Current Light Status</div>
+                <div className="flex justify-center">
+                  <div className={`px-4 py-2 rounded-lg font-bold text-white ${
+                    currentLight === 'win' ? 'bg-green-600' :
+                    currentLight === 'loss' ? 'bg-red-600' :
+                    'bg-gray-600'
+                  }`}>
+                    {currentLight === 'win' ? 'WIN LIGHT' :
+                     currentLight === 'loss' ? 'LOSS LIGHT' :
+                     'DEFAULT LIGHT'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      </div>
+      <BuyInModal
+        open={buyInModal.open}
+        value={buyInModal.value}
+        onChange={val => setBuyInModal(prev => ({ ...prev, value: val }))}
+        onIncrement={incrementBuyIn}
+        onSave={saveBuyInModal}
+        onCancel={closeBuyInModal}
+        inputRef={buyInInputRef as React.RefObject<HTMLInputElement>}
+      />
+      {/* Settings Button */}
+      <div className="fixed bottom-4 right-4 z-40">
+        <button
+          className="bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full shadow-lg"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Settings"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        winDuration={winLightDuration}
+        lossDuration={lossLightDuration}
+        onWinDurationChange={setWinLightDuration}
+        onLossDurationChange={setLossLightDuration}
+      />
+    </>
   );
 }
