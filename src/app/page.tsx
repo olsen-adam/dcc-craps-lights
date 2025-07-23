@@ -9,11 +9,11 @@ const POINT_NUMBERS = [4, 5, 6, 8, 9, 10];
 const ALL_NUMBERS = Array.from({ length: 11 }, (_, i) => i + 2);
 
 // Key mapping for numbers
-const getKeyForNumber = (num: number): string => {
+const getKeyForNumber = (num: number, numpadMode: boolean): string => {
   if (num >= 2 && num <= 9) return String(num);
   if (num === 10) return '0';
   if (num === 11) return '1';
-  if (num === 12) return '.';
+  if (num === 12) return numpadMode ? '.' : '-';
   return '';
 };
 
@@ -36,7 +36,8 @@ export default function Home() {
     hitCounts: { [key: number]: number };
     winLoss: null | 'win' | 'loss';
     shouldSwitchPlayer: boolean;
-    currentLight: 'default' | 'win' | 'loss';
+    currentLight: 'default' | 'win' | 'loss' | 'player';
+    currentPlayerLight: number | null;
   };
   const [previousState, setPreviousState] = useState<GameState | null>(null);
 
@@ -76,9 +77,11 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
   const [winLightDuration, setWinLightDuration] = useState<number>(3);
   const [lossLightDuration, setLossLightDuration] = useState<number>(2);
+  const [numpadMode, setNumpadMode] = useState<boolean>(false);
 
   // Light status state
-  const [currentLight, setCurrentLight] = useState<'default' | 'win' | 'loss'>('default');
+  const [currentLight, setCurrentLight] = useState<'default' | 'win' | 'loss' | 'player'>('default');
+  const [currentPlayerLight, setCurrentPlayerLight] = useState<number | null>(null);
 
   // State for keyboard press animation
   const [keyPressed, setKeyPressed] = useState<number | null>(null);
@@ -91,7 +94,8 @@ export default function Home() {
       hitCounts: { ...hitCounts },
       winLoss,
       shouldSwitchPlayer,
-      currentLight
+      currentLight,
+      currentPlayerLight
     };
     setPreviousState(currentState);
   };
@@ -106,6 +110,7 @@ export default function Home() {
     setWinLoss(previousState.winLoss);
     setShouldSwitchPlayer(previousState.shouldSwitchPlayer);
     setCurrentLight(previousState.currentLight);
+    setCurrentPlayerLight(previousState.currentPlayerLight);
     
     // Clear the previous state after undoing
     setPreviousState(null);
@@ -239,31 +244,58 @@ export default function Home() {
       const code = event.code;
       let targetNumber: number | null = null;
       
-      // Handle both regular number keys and numpad keys
-      if (key >= '2' && key <= '9') {
-        targetNumber = parseInt(key);
-      } else if (key === '0' || code === 'Numpad0') {
-        targetNumber = 10;
-      } else if (key === '1' || code === 'Numpad1') {
-        targetNumber = 11;
-      } else if (key === '.' || code === 'NumpadDecimal') {
-        targetNumber = 12;
-      } else if (code === 'Numpad2') {
-        targetNumber = 2;
-      } else if (code === 'Numpad3') {
-        targetNumber = 3;
-      } else if (code === 'Numpad4') {
-        targetNumber = 4;
-      } else if (code === 'Numpad5') {
-        targetNumber = 5;
-      } else if (code === 'Numpad6') {
-        targetNumber = 6;
-      } else if (code === 'Numpad7') {
-        targetNumber = 7;
-      } else if (code === 'Numpad8') {
-        targetNumber = 8;
-      } else if (code === 'Numpad9') {
-        targetNumber = 9;
+      if (numpadMode) {
+        // Numpad mode: only allow numpad keys
+        if (code === 'Numpad2') {
+          targetNumber = 2;
+        } else if (code === 'Numpad3') {
+          targetNumber = 3;
+        } else if (code === 'Numpad4') {
+          targetNumber = 4;
+        } else if (code === 'Numpad5') {
+          targetNumber = 5;
+        } else if (code === 'Numpad6') {
+          targetNumber = 6;
+        } else if (code === 'Numpad7') {
+          targetNumber = 7;
+        } else if (code === 'Numpad8') {
+          targetNumber = 8;
+        } else if (code === 'Numpad9') {
+          targetNumber = 9;
+        } else if (code === 'Numpad0') {
+          targetNumber = 10;
+        } else if (code === 'Numpad1') {
+          targetNumber = 11;
+        } else if (code === 'NumpadDecimal') {
+          targetNumber = 12;
+        }
+      } else {
+        // Regular mode: allow both regular number keys and numpad keys
+        if (key >= '2' && key <= '9') {
+          targetNumber = parseInt(key);
+        } else if (key === '0' || code === 'Numpad0') {
+          targetNumber = 10;
+        } else if (key === '1' || code === 'Numpad1') {
+          targetNumber = 11;
+        } else if (key === '-' || code === 'NumpadDecimal') {
+          targetNumber = 12;
+        } else if (code === 'Numpad2') {
+          targetNumber = 2;
+        } else if (code === 'Numpad3') {
+          targetNumber = 3;
+        } else if (code === 'Numpad4') {
+          targetNumber = 4;
+        } else if (code === 'Numpad5') {
+          targetNumber = 5;
+        } else if (code === 'Numpad6') {
+          targetNumber = 6;
+        } else if (code === 'Numpad7') {
+          targetNumber = 7;
+        } else if (code === 'Numpad8') {
+          targetNumber = 8;
+        } else if (code === 'Numpad9') {
+          targetNumber = 9;
+        }
       }
       
       if (targetNumber) {
@@ -277,7 +309,7 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [buyInModal.open, settingsOpen, point]);
+  }, [buyInModal.open, settingsOpen, point, numpadMode]);
 
   // Helper to advance shooter to next enabled player
   const advanceShooter = () => {
@@ -290,12 +322,35 @@ export default function Home() {
     triggerPlayerChange(players[nextIdx].id);
     setShooter(players[nextIdx].id);
     setShouldSwitchPlayer(false);
+    
+    // Set light states for player change
+    setCurrentLight('player');
+    setCurrentPlayerLight(players[nextIdx].id);
+    
+    // Return to default after a short delay
+    setTimeout(() => {
+      setCurrentLight('default');
+      setCurrentPlayerLight(null);
+      triggerLight('default');
+    }, 2000);
   };
 
   // Manual shooter selection
   const handleShooterSelect = (id: number) => {
     setShooter(id);
     setShouldSwitchPlayer(false);
+    
+    // Trigger player change light
+    setCurrentLight('player');
+    setCurrentPlayerLight(id);
+    triggerPlayerChange(id);
+    
+    // Return to default after a short delay
+    setTimeout(() => {
+      setCurrentLight('default');
+      setCurrentPlayerLight(null);
+      triggerLight('default');
+    }, 2000);
   };
 
   const handlePlayerChange = (id: number, field: 'name' | 'buyIn' | 'enabled', value: string | boolean) => {
@@ -342,7 +397,7 @@ export default function Home() {
                       {num}
                     </button>
                     <div className="text-xs text-gray-500 mt-1 font-mono">
-                      {getKeyForNumber(num)}
+                      {getKeyForNumber(num, numpadMode)}
                     </div>
                   </div>
                 );
@@ -412,11 +467,11 @@ export default function Home() {
               <div className="text-white text-base mb-2 font-semibold">Number Frequency</div>
               <div className="flex flex-col gap-1">
                 {ALL_NUMBERS.map((num) => (
-                  <div key={num} className="flex items-center gap-2 h-9">
-                    <span className="w-6 text-right text-sm text-gray-300">{num}</span>
-                    <div className="flex-1 h-4 bg-gray-700 rounded">
+                  <div key={num} className="flex items-center gap-1 h-7">
+                    <span className="w-6 text-right text-sm text-yellow-300 font-bold font-mono">{num}</span>
+                    <div className="flex-1 h-6 bg-gray-700 rounded">
                       <div
-                        className="h-4 rounded bg-green-400 transition-all"
+                        className="h-6 rounded bg-green-400 transition-all"
                         style={{ width: `${maxHits ? (hitCounts[num] / maxHits) * 100 : 0}%` }}
                       ></div>
                     </div>
@@ -512,10 +567,12 @@ export default function Home() {
                   <div className={`px-4 py-2 rounded-lg font-bold text-white ${
                     currentLight === 'win' ? 'bg-green-600' :
                     currentLight === 'loss' ? 'bg-red-600' :
+                    currentLight === 'player' ? 'bg-blue-600' :
                     'bg-gray-600'
                   }`}>
                     {currentLight === 'win' ? 'WIN LIGHT' :
                      currentLight === 'loss' ? 'LOSS LIGHT' :
+                     currentLight === 'player' ? `PLAYER ${currentPlayerLight} LIGHT` :
                      'DEFAULT LIGHT'}
                   </div>
                 </div>
@@ -553,8 +610,10 @@ export default function Home() {
         onClose={() => setSettingsOpen(false)}
         winDuration={winLightDuration}
         lossDuration={lossLightDuration}
+        numpadMode={numpadMode}
         onWinDurationChange={setWinLightDuration}
         onLossDurationChange={setLossLightDuration}
+        onNumpadModeChange={setNumpadMode}
       />
     </>
   );
