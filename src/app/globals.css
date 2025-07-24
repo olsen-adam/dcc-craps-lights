@@ -24,3 +24,57 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Fire Effect for Fire Bet */
+.fire-effect {
+  box-shadow: 0 0 20px rgba(255, 69, 0, 0.15);
+  animation: fire-glow 2s ease-in-out infinite alternate;
+}
+
+.fire-flames {
+  position: absolute;
+  inset: -10px;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(255, 69, 0, 0.25) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 140, 0, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(255, 215, 0, 0.15) 0%, transparent 50%);
+  animation: fire-flicker 1.5s ease-in-out infinite alternate;
+  border-radius: inherit;
+}
+
+.fire-flames::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  background: 
+    radial-gradient(circle at 30% 70%, rgba(255, 69, 0, 0.2) 0%, transparent 40%),
+    radial-gradient(circle at 70% 30%, rgba(255, 140, 0, 0.15) 0%, transparent 40%);
+  animation: fire-flicker 2s ease-in-out infinite alternate-reverse;
+  border-radius: inherit;
+}
+
+@keyframes fire-glow {
+  0% {
+    box-shadow: 
+      0 0 calc(10px * var(--fire-level, 3)) rgba(255, 69, 0, calc(0.15 + (var(--fire-level, 3) - 3) * 0.15)),
+      0 0 calc(20px * var(--fire-level, 3)) rgba(255, 140, 0, calc(0.12 + (var(--fire-level, 3) - 3) * 0.15)),
+      0 0 calc(30px * var(--fire-level, 3)) rgba(255, 215, 0, calc(0.1 + (var(--fire-level, 3) - 3) * 0.15));
+  }
+  100% {
+    box-shadow: 
+      0 0 calc(15px * var(--fire-level, 3)) rgba(255, 69, 0, calc(0.25 + (var(--fire-level, 3) - 3) * 0.15)),
+      0 0 calc(25px * var(--fire-level, 3)) rgba(255, 140, 0, calc(0.22 + (var(--fire-level, 3) - 3) * 0.15)),
+      0 0 calc(35px * var(--fire-level, 3)) rgba(255, 215, 0, calc(0.2 + (var(--fire-level, 3) - 3) * 0.15));
+  }
+}
+
+@keyframes fire-flicker {
+  0% {
+    opacity: calc(0.3 + (var(--fire-level, 3) - 3) * 0.15);
+    transform: scale(1);
+  }
+  100% {
+    opacity: calc(0.5 + (var(--fire-level, 3) - 3) * 0.15);
+    transform: scale(1.05);
+  }
+}

@@ -23,7 +23,15 @@ export const LIGHT_CONFIG = {
   point: '/api/lights/point',
   
   // Clear lights (when point is cleared)
-  clear: '/api/lights/clear'
+  clear: '/api/lights/clear',
+  
+  // Fire Bet lights (for different win levels)
+  fireBet1: '/api/lights/fire-bet/1',
+  fireBet2: '/api/lights/fire-bet/2',
+  fireBet3: '/api/lights/fire-bet/3',
+  fireBet4: '/api/lights/fire-bet/4',
+  fireBet5: '/api/lights/fire-bet/5',
+  fireBet6: '/api/lights/fire-bet/6'
 };
 
 // Helper function to trigger a light
@@ -47,6 +55,12 @@ export const triggerLight = async (lightType: keyof typeof LIGHT_CONFIG) => {
 // Helper function to trigger player change light for specific player
 export const triggerPlayerChange = async (playerId: number) => {
   const lightType = `playerChange${playerId}` as keyof typeof LIGHT_CONFIG;
+  await triggerLight(lightType);
+};
+
+// Helper function to trigger Fire Bet light for specific level
+export const triggerFireBet = async (level: number) => {
+  const lightType = `fireBet${level}` as keyof typeof LIGHT_CONFIG;
   await triggerLight(lightType);
 };
 

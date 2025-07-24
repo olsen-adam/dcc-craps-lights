@@ -6,9 +6,11 @@ interface SettingsModalProps {
   winDuration: number;
   lossDuration: number;
   numpadMode: boolean;
+  autoChangePlayers: boolean;
   onWinDurationChange: (duration: number) => void;
   onLossDurationChange: (duration: number) => void;
   onNumpadModeChange: (enabled: boolean) => void;
+  onAutoChangePlayersChange: (enabled: boolean) => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -17,9 +19,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   winDuration,
   lossDuration,
   numpadMode,
+  autoChangePlayers,
   onWinDurationChange,
   onLossDurationChange,
-  onNumpadModeChange
+  onNumpadModeChange,
+  onAutoChangePlayersChange
 }) => {
   if (!open) return null;
 
@@ -61,6 +65,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               {numpadMode 
                 ? "Only numpad keys are active. Use 0 for 10, 1 for 11, and . for 12."
                 : "All number keys work. Use - for 12 instead of ."
+              }
+            </p>
+          </div>
+
+          {/* Auto Change Players Toggle */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-sm font-semibold text-gray-700">Auto Change Players</label>
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    autoChangePlayers ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                  onClick={() => onAutoChangePlayersChange(!autoChangePlayers)}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      autoChangePlayers ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">
+              {autoChangePlayers 
+                ? "Automatically advance to next player after a loss (seven out)."
+                : "Show 'Swap Players?' button after a loss for manual player change."
               }
             </p>
           </div>

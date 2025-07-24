@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import PlayerCard from "./components/PlayerCard";
 import BuyInModal from "./components/BuyInModal";
 import SettingsModal from "./components/SettingsModal";
-import { triggerLight, triggerPlayerChange } from "./config/lights";
+import { triggerLight, triggerPlayerChange, triggerFireBet } from "./config/lights";
 
 const POINT_NUMBERS = [4, 5, 6, 8, 9, 10];
 const ALL_NUMBERS = Array.from({ length: 11 }, (_, i) => i + 2);
@@ -29,6 +29,10 @@ export default function Home() {
   });
   const [winLoss, setWinLoss] = useState<null | 'win' | 'loss'>(null);
 
+  // Fire Bet state
+  const [fireBetNumbers, setFireBetNumbers] = useState<Set<number>>(new Set());
+  const [fireBetWinLevel, setFireBetWinLevel] = useState<number>(0);
+
   // Previous game state for undo functionality
   type GameState = {
     point: number | null;
@@ -38,6 +42,9 @@ export default function Home() {
     shouldSwitchPlayer: boolean;
     currentLight: 'default' | 'win' | 'loss' | 'player';
     currentPlayerLight: number | null;
+    fireBetNumbers: Set<number>;
+    fireBetWinLevel: number;
+    autoChangePlayers: boolean;
   };
   const [previousState, setPreviousState] = useState<GameState | null>(null);
 
@@ -78,6 +85,7 @@ export default function Home() {
   const [winLightDuration, setWinLightDuration] = useState<number>(3);
   const [lossLightDuration, setLossLightDuration] = useState<number>(2);
   const [numpadMode, setNumpadMode] = useState<boolean>(false);
+  const [autoChangePlayers, setAutoChangePlayers] = useState<boolean>(false);
 
   // Light status state
   const [currentLight, setCurrentLight] = useState<'default' | 'win' | 'loss' | 'player'>('default');
@@ -95,7 +103,10 @@ export default function Home() {
       winLoss,
       shouldSwitchPlayer,
       currentLight,
-      currentPlayerLight
+      currentPlayerLight,
+      fireBetNumbers: new Set(fireBetNumbers),
+      fireBetWinLevel,
+      autoChangePlayers
     };
     setPreviousState(currentState);
   };
@@ -111,6 +122,9 @@ export default function Home() {
     setShouldSwitchPlayer(previousState.shouldSwitchPlayer);
     setCurrentLight(previousState.currentLight);
     setCurrentPlayerLight(previousState.currentPlayerLight);
+    setFireBetNumbers(new Set(previousState.fireBetNumbers));
+    setFireBetWinLevel(previousState.fireBetWinLevel);
+    setAutoChangePlayers(previousState.autoChangePlayers);
     
     // Clear the previous state after undoing
     setPreviousState(null);
@@ -172,6 +186,39 @@ export default function Home() {
     // Reset win/loss by default
     setWinLoss(null);
 
+    // Handle Fire Bet logic - only count if point is established and then hit
+    if (point !== null && POINT_NUMBERS.includes(num) && point === num) {
+      const newFireBetNumbers = new Set(fireBetNumbers);
+      newFireBetNumbers.add(num);
+      setFireBetNumbers(newFireBetNumbers);
+      
+      // Calculate win level based on unique numbers hit
+      const uniqueCount = newFireBetNumbers.size;
+      let newLevel = 0;
+      if (uniqueCount === 1) {
+        newLevel = 1;
+      } else if (uniqueCount === 2) {
+        newLevel = 2;
+      } else if (uniqueCount === 3) {
+        newLevel = 3;
+      } else if (uniqueCount === 4) {
+        newLevel = 4;
+      } else if (uniqueCount === 5) {
+        newLevel = 5;
+      } else if (uniqueCount === 6) {
+        newLevel = 6;
+      }
+      
+      // Only trigger light if level increased
+      if (newLevel > fireBetWinLevel) {
+        setFireBetWinLevel(newLevel);
+        triggerFireBet(newLevel);
+        console.log(`FIRE BET LEVEL ${newLevel}!`);
+      } else {
+        setFireBetWinLevel(newLevel);
+      }
+    }
+
     if (point === null) {
       // No point established
       if (POINT_NUMBERS.includes(num)) {
@@ -206,7 +253,7 @@ export default function Home() {
           setCurrentLight('win');
           console.log('WIN');
           setPoint(null); // Deselect if same point is rolled again
-          triggerLight('win');
+          // Don't trigger win light here - Fire Bet logic will handle the light
           // After win duration, return to default
           setTimeout(() => {
             setCurrentLight('default');
@@ -219,15 +266,28 @@ export default function Home() {
         setCurrentLight('loss');
         console.log('LOSS');
         setPoint(null); // Clear point on 7
+        
+        // Reset Fire Bet on seven out
+        setFireBetNumbers(new Set());
+        setFireBetWinLevel(0);
+        
         triggerLight('loss');
         // After loss duration, return to default
         setTimeout(() => {
           setCurrentLight('default');
           triggerLight('default');
         }, lossLightDuration * 1000);
-        // Set flag to show swap button instead of auto-advancing
+        // Handle player switching based on auto-change setting
         if (players.filter(p => p.enabled).length > 1) {
-          setShouldSwitchPlayer(true);
+          if (autoChangePlayers) {
+            // Auto-advance to next player
+            setTimeout(() => {
+              advanceShooter();
+            }, lossLightDuration * 1000 + 500); // Wait for loss light to finish + small delay
+          } else {
+            // Show swap button for manual change
+            setShouldSwitchPlayer(true);
+          }
         }
       }
       // Other numbers do nothing
@@ -323,6 +383,10 @@ export default function Home() {
     setShooter(players[nextIdx].id);
     setShouldSwitchPlayer(false);
     
+    // Reset Fire Bet for new player
+    setFireBetNumbers(new Set());
+    setFireBetWinLevel(0);
+    
     // Set light states for player change
     setCurrentLight('player');
     setCurrentPlayerLight(players[nextIdx].id);
@@ -339,6 +403,10 @@ export default function Home() {
   const handleShooterSelect = (id: number) => {
     setShooter(id);
     setShouldSwitchPlayer(false);
+    
+    // Reset Fire Bet for new player
+    setFireBetNumbers(new Set());
+    setFireBetWinLevel(0);
     
     // Trigger player change light
     setCurrentLight('player');
@@ -376,16 +444,16 @@ export default function Home() {
   return (
     <>
       <div className="min-h-screen w-full font-sans flex flex-col items-center bg-gradient-to-br from-gray-900 to-gray-700">
-        <div className="w-full max-w-screen-2xl mx-auto flex flex-col items-center p-4 gap-8">
+        <div className="w-full max-w-screen-2xl mx-auto flex flex-col items-center p-4 gap-6">
           <h1 className="text-3xl font-extrabold text-white drop-shadow">DCC Craps Table</h1>
           <div className="w-full max-w-6xl">
-            <div className="flex flex-row gap-6 w-full overflow-x-auto justify-center py-2">
+            <div className="flex flex-row gap-4 w-full overflow-x-auto justify-center py-1">
               {ALL_NUMBERS.map((num) => {
                 const isPoint = point === num && POINT_NUMBERS.includes(num);
                 return (
                   <div key={num} className="flex flex-col items-center">
                     <button
-                      className={`w-20 h-20 rounded-3xl text-3xl font-extrabold border-4 shadow-lg transition-all duration-150 flex items-center justify-center
+                      className={`w-18 h-18 rounded-3xl text-2xl font-extrabold border-4 shadow-lg transition-all duration-150 flex items-center justify-center
                         ${isPoint ? "bg-yellow-300 border-yellow-500 text-black scale-105" : "bg-gray-800 border-gray-600 text-white hover:bg-gray-600 active:scale-95"}
                         ${keyPressed === num ? "scale-95 bg-gray-600" : ""}
                       `}
@@ -404,10 +472,10 @@ export default function Home() {
               })}
             </div>
           </div>
-          <div className="flex flex-col md:flex-row gap-8 w-full max-w-7xl px-2 overflow-x-auto">
+          <div className="flex flex-col md:flex-row gap-6 w-full max-w-7xl px-2 overflow-x-auto">
             {/* Combined History and Graph */}
-            <div className="flex-[1.2] bg-gray-800 rounded-xl p-6 shadow-md min-w-[320px] flex flex-col">
-              <div className="text-lg text-white mb-2">
+            <div className="flex-[1.2] bg-gray-800 rounded-xl p-5 shadow-md min-w-[320px] flex flex-col">
+              <div className="text-base text-white mb-1">
                 {point ? (
                   <span>
                     Point is <span className="font-bold text-yellow-300">{point}</span>
@@ -417,7 +485,7 @@ export default function Home() {
                 )}
               </div>
               {winLoss && (
-                <div className={`mb-2 text-lg font-bold ${winLoss === 'win' ? 'text-green-400' : 'text-red-400'}`}>{winLoss === 'win' ? 'WIN!' : 'LOSS'}</div>
+                <div className={`mb-1 text-base font-bold ${winLoss === 'win' ? 'text-green-400' : 'text-red-400'}`}>{winLoss === 'win' ? 'WIN!' : 'LOSS'}</div>
               )}
               <div className="flex justify-between items-center mb-1">
                 <div className="text-white text-base font-semibold">History</div>
@@ -446,7 +514,7 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2 min-h-[40px] mb-4">
+              <div className="flex flex-wrap gap-2 min-h-[32px] mb-3">
                 {history.length === 0 ? (
                   <span className="text-gray-400">No rolls yet</span>
                 ) : (
@@ -464,14 +532,46 @@ export default function Home() {
                   ))
                 )}
               </div>
-              <div className="text-white text-base mb-2 font-semibold">Number Frequency</div>
-              <div className="flex flex-col gap-1">
-                {ALL_NUMBERS.map((num) => (
-                  <div key={num} className="flex items-center gap-1 h-7">
-                    <span className="w-6 text-right text-sm text-yellow-300 font-bold font-mono">{num}</span>
-                    <div className="flex-1 h-6 bg-gray-700 rounded">
+              <div className="text-white text-base mb-2 font-semibold">Fire Bet Status</div>
+              <div className={`mb-3 p-2 bg-gray-700 rounded-lg relative ${
+                fireBetWinLevel >= 3 ? 'fire-effect' : ''
+              }`} style={{
+                '--fire-level': fireBetWinLevel >= 3 ? fireBetWinLevel : 0
+              } as React.CSSProperties}>
+                {fireBetWinLevel >= 3 && (
+                  <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none">
+                    <div className="fire-flames"></div>
+                  </div>
+                )}
+                <div className="relative z-10">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-white text-sm">Current Level: <span className="font-bold text-yellow-300">{fireBetWinLevel}</span></span>
+                    <span className="text-white text-sm">Player {shooter}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-8 justify-center">
+                    {POINT_NUMBERS.map((num) => (
                       <div
-                        className="h-6 rounded bg-green-400 transition-all"
+                        key={num}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
+                          fireBetNumbers.has(num)
+                            ? 'bg-green-600 border-green-400 text-white'
+                            : 'bg-gray-600 border-gray-500 text-gray-300'
+                        }`}
+                      >
+                        {num}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="text-white text-base mb-2 font-semibold">Number Frequency</div>
+                              <div className="flex flex-col gap-1">
+                  {ALL_NUMBERS.map((num) => (
+                    <div key={num} className="flex items-center gap-1 h-6">
+                    <span className="w-6 text-right text-sm text-yellow-300 font-bold font-mono">{num}</span>
+                    <div className="flex-1 h-5 bg-gray-700 rounded">
+                      <div
+                        className="h-5 rounded bg-green-400 transition-all"
                         style={{ width: `${maxHits ? (hitCounts[num] / maxHits) * 100 : 0}%` }}
                       ></div>
                     </div>
@@ -481,7 +581,7 @@ export default function Home() {
               </div>
             </div>
             {/* Player Selector as large box */}
-            <div className="flex-[2] bg-gray-800 rounded-xl p-8 shadow-md min-w-[400px] flex flex-col items-center">
+            <div className="flex-[2] bg-gray-800 rounded-xl p-6 shadow-md min-w-[400px] flex flex-col items-center">
               <div className="flex justify-between items-center mb-4 w-full">
                 <div className="text-white text-2xl font-semibold">Shooter & Players</div>
                 <button
@@ -494,9 +594,9 @@ export default function Home() {
                   Clear Board
                 </button>
               </div>
-              <div className="flex flex-col items-center gap-4 w-full">
+              <div className="flex flex-col items-center gap-3 w-full">
                 {/* Top row: 3 4 5 6 */}
-                <div className="flex flex-row gap-6 mb-4 w-full justify-center">
+                <div className="flex flex-row gap-5 mb-3 w-full justify-center">
                   {[3,4,5,6].map((id) => (
                     <PlayerCard
                       key={id}
@@ -510,7 +610,7 @@ export default function Home() {
                   ))}
                 </div>
                 {/* Middle row: 2 (left), 7 (right) */}
-                <div className="flex flex-row gap-32 mb-4 w-full justify-between">
+                <div className="flex flex-row gap-32 mb-3 w-full justify-between">
                   <PlayerCard
                     player={players.find((p) => p.id === 2)!}
                     isShooter={shooter === 2}
@@ -561,7 +661,7 @@ export default function Home() {
               )}
               
               {/* Light Status Display */}
-              <div className="mt-6 p-4 bg-gray-700 rounded-lg -mb-2">
+              <div className="mt-4 p-3 bg-gray-700 rounded-lg -mb-2">
                 <div className="text-white text-center mb-2 font-semibold">Current Light Status</div>
                 <div className="flex justify-center">
                   <div className={`px-4 py-2 rounded-lg font-bold text-white ${
@@ -611,9 +711,11 @@ export default function Home() {
         winDuration={winLightDuration}
         lossDuration={lossLightDuration}
         numpadMode={numpadMode}
+        autoChangePlayers={autoChangePlayers}
         onWinDurationChange={setWinLightDuration}
         onLossDurationChange={setLossLightDuration}
         onNumpadModeChange={setNumpadMode}
+        onAutoChangePlayersChange={setAutoChangePlayers}
       />
     </>
   );
