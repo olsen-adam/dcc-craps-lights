@@ -437,7 +437,6 @@ export default function Home() {
         <div className="w-full max-w-screen-2xl mx-auto flex flex-col items-center p-4 gap-6">
           <h1 className="text-3xl font-extrabold text-white drop-shadow">DCC Craps Table</h1>
           <div className="w-full max-w-6xl">
-            ASDHASDOIHASDHIOAHSOIDHOIASDHIODHOIA
             <div className="flex flex-row gap-4 w-full overflow-x-auto justify-center py-1">
               {ALL_NUMBERS.map((num) => {
                 const isPoint = point === num && POINT_NUMBERS.includes(num);
