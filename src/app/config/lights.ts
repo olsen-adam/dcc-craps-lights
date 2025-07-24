@@ -65,7 +65,7 @@ export const triggerFireBet = async (level: number) => {
 };
 
 // Helper function to trigger light with data
-export const triggerLightWithData = async (lightType: keyof typeof LIGHT_CONFIG, data?: any) => {
+export const triggerLightWithData = async (lightType: keyof typeof LIGHT_CONFIG, data?: unknown) => {
   try {
     const response = await fetch(LIGHT_CONFIG[lightType], {
       method: 'POST',

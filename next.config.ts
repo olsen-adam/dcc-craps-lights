@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  name: "DCC Craps Lights",
+  output: 'export',
 };
 
 export default nextConfig;

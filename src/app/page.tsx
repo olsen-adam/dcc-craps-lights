@@ -47,17 +47,6 @@ export default function Home() {
     autoChangePlayers: boolean;
   };
   const [previousState, setPreviousState] = useState<GameState | null>(null);
-
-  const PLAYER_POSITIONS = [
-    { id: 0, label: 'P1', group: 'left' },
-    { id: 1, label: 'P2', group: 'left' },
-    { id: 2, label: 'P3', group: 'topLeft' },
-    { id: 3, label: 'P4', group: 'topLeft' },
-    { id: 4, label: 'P5', group: 'topRight' },
-    { id: 5, label: 'P6', group: 'topRight' },
-    { id: 6, label: 'P7', group: 'right' },
-    { id: 7, label: 'P8', group: 'right' },
-  ];
   // Player state: name, buy-in, enabled
   const initialPlayers = [
     { id: 1, name: '', buyIn: '', enabled: false },
@@ -369,6 +358,7 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buyInModal.open, settingsOpen, point, numpadMode]);
 
   // Helper to advance shooter to next enabled player
@@ -447,6 +437,7 @@ export default function Home() {
         <div className="w-full max-w-screen-2xl mx-auto flex flex-col items-center p-4 gap-6">
           <h1 className="text-3xl font-extrabold text-white drop-shadow">DCC Craps Table</h1>
           <div className="w-full max-w-6xl">
+            ASDHASDOIHASDHIOAHSOIDHOIASDHIODHOIA
             <div className="flex flex-row gap-4 w-full overflow-x-auto justify-center py-1">
               {ALL_NUMBERS.map((num) => {
                 const isPoint = point === num && POINT_NUMBERS.includes(num);
