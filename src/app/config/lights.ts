@@ -91,11 +91,19 @@ export const getLightUrl = (settings: LightSettings, lightType: keyof LightSetti
 export const triggerLight = async (lightType: keyof LightSettings['effects'], settings: LightSettings): Promise<{ success: boolean; error?: string }> => {
   try {
     const url = getLightUrl(settings, lightType);
+    
+    // Check if we're in a browser environment and if the URL is HTTP
+    if (typeof window !== 'undefined' && url.startsWith('http://')) {
+      console.warn('HTTP requests are blocked in HTTPS environments. Please use HTTPS or a proxy.');
+      return { success: false, error: 'HTTP requests blocked in HTTPS environment' };
+    }
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      mode: 'cors',
     });
     
     if (!response.ok) {

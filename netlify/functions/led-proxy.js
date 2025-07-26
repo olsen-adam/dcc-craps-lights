@@ -1,8 +1,11 @@
 const fetch = require('node-fetch');
 
 exports.handler = async (event, context) => {
+  console.log('Function called with event:', JSON.stringify(event, null, 2));
+  
   // Enable CORS - allow all Netlify domains and local development
   const origin = event.headers.origin || event.headers.Origin;
+  console.log('Request origin:', origin);
   
   // Allow any Netlify domain (including preview deployments) and localhost
   const isAllowedOrigin = origin && (
@@ -11,6 +14,8 @@ exports.handler = async (event, context) => {
     origin.includes('127.0.0.1')
   );
   
+  console.log('Is allowed origin:', isAllowedOrigin);
+  
   const headers = {
     'Access-Control-Allow-Origin': isAllowedOrigin ? origin : 'https://dcclights.netlify.app',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
@@ -18,6 +23,8 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400'
   };
+  
+  console.log('Response headers:', headers);
 
   // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
