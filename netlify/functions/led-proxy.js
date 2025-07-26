@@ -42,6 +42,8 @@ exports.handler = async (event, context) => {
     // Construct the URL for the LED controller
     const ledControllerUrl = `http://192.168.1.77${path}`;
     
+    console.log('Proxying to LED controller:', ledControllerUrl);
+    
     console.log(`Proxying request to: ${ledControllerUrl}`);
     
     // Make the request to the LED controller

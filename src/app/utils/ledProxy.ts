@@ -24,6 +24,7 @@ export class LEDProxy {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
         },
         mode: 'cors',
         signal: controller.signal,
