@@ -10,6 +10,30 @@ export interface Settings {
   lossLightDuration: number;
   numpadMode: boolean;
   autoChangePlayers: boolean;
+  lightSettings: {
+    ipAddress: string;
+    effects: {
+      default: { fx: number; sx: number; ix: number; r: number; g: number; b: number }[];
+      win: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      loss: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      playerChange1: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      playerChange2: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      playerChange3: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      playerChange4: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      playerChange5: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      playerChange6: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      playerChange7: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      playerChange8: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      point: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      clear: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      fireBet1: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      fireBet2: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      fireBet3: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      fireBet4: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      fireBet5: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+      fireBet6: { fx: number; sx: number; ix: number; r: number; g: number; b: number };
+    };
+  };
 }
 
 export interface SavedData {
@@ -59,4 +83,32 @@ export const getDefaultSettings = (): Settings => ({
   lossLightDuration: 2,
   numpadMode: false,
   autoChangePlayers: false,
+  lightSettings: {
+    ipAddress: 'http://192.168.1.77',
+    effects: {
+      default: [
+        { fx: 15, sx: 110, ix: 90, r: 255, g: 255, b: 0 },
+        { fx: 16, sx: 120, ix: 85, r: 255, g: 200, b: 50 },
+        { fx: 17, sx: 100, ix: 95, r: 200, g: 255, b: 100 }
+      ],
+      win: { fx: 16, sx: 255, ix: 31, r: 0, g: 255, b: 0 },
+      loss: { fx: 78, sx: 210, ix: 255, r: 255, g: 0, b: 0 },
+      playerChange1: { fx: 15, sx: 110, ix: 90, r: 0, g: 255, b: 255 },
+      playerChange2: { fx: 15, sx: 110, ix: 90, r: 255, g: 0, b: 255 },
+      playerChange3: { fx: 15, sx: 110, ix: 90, r: 255, g: 255, b: 0 },
+      playerChange4: { fx: 15, sx: 110, ix: 90, r: 0, g: 0, b: 255 },
+      playerChange5: { fx: 15, sx: 110, ix: 90, r: 255, g: 128, b: 0 },
+      playerChange6: { fx: 15, sx: 110, ix: 90, r: 128, g: 0, b: 255 },
+      playerChange7: { fx: 15, sx: 110, ix: 90, r: 255, g: 0, b: 128 },
+      playerChange8: { fx: 15, sx: 110, ix: 90, r: 0, g: 255, b: 128 },
+      point: { fx: 15, sx: 110, ix: 90, r: 255, g: 165, b: 0 },
+      clear: { fx: 15, sx: 110, ix: 90, r: 128, g: 128, b: 128 },
+      fireBet1: { fx: 50, sx: 10, ix: 90, r: 255, g: 255, b: 0 },
+      fireBet2: { fx: 50, sx: 80, ix: 90, r: 255, g: 255, b: 0 },
+      fireBet3: { fx: 50, sx: 150, ix: 90, r: 255, g: 255, b: 0 },
+      fireBet4: { fx: 50, sx: 190, ix: 90, r: 255, g: 165, b: 0 },
+      fireBet5: { fx: 50, sx: 230, ix: 90, r: 228, g: 0, b: 120 },
+      fireBet6: { fx: 50, sx: 230, ix: 90, r: 180, g: 40, b: 255 }
+    }
+  }
 }); 

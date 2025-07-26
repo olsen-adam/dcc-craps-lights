@@ -3,7 +3,9 @@ import { useState, useEffect, useRef } from "react";
 import PlayerCard from "./components/PlayerCard";
 import BuyInModal from "./components/BuyInModal";
 import SettingsModal from "./components/SettingsModal";
-import { triggerLight, triggerPlayerChange, triggerFireBet } from "./config/lights";
+import LightSettingsModal from "./components/LightSettingsModal";
+import Toast from "./components/Toast";
+import { triggerLight, triggerPlayerChange, triggerFireBet, type LightSettings, DEFAULT_LIGHT_SETTINGS } from "./config/lights";
 import { 
   loadFromLocalStorage, 
   saveToLocalStorage, 
@@ -69,10 +71,19 @@ export default function Home() {
 
   // Settings state
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
+  const [lightSettingsOpen, setLightSettingsOpen] = useState<boolean>(false);
   const [winLightDuration, setWinLightDuration] = useState<number>(getDefaultSettings().winLightDuration);
   const [lossLightDuration, setLossLightDuration] = useState<number>(getDefaultSettings().lossLightDuration);
   const [numpadMode, setNumpadMode] = useState<boolean>(getDefaultSettings().numpadMode);
   const [autoChangePlayers, setAutoChangePlayers] = useState<boolean>(getDefaultSettings().autoChangePlayers);
+  const [lightSettings, setLightSettings] = useState<LightSettings>(DEFAULT_LIGHT_SETTINGS);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' | 'info'; isVisible: boolean }>({
+    message: '',
+    type: 'error',
+    isVisible: false
+  });
 
   // Light status state
   const [currentLight, setCurrentLight] = useState<'default' | 'win' | 'loss' | 'player'>('default');
@@ -80,6 +91,35 @@ export default function Home() {
 
   // State for keyboard press animation
   const [keyPressed, setKeyPressed] = useState<number | null>(null);
+
+  // Helper function to show toast messages
+  const showToast = (message: string, type: 'error' | 'success' | 'info' = 'error') => {
+    setToast({ message, type, isVisible: true });
+  };
+
+  // Helper function to close toast
+  const closeToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  };
+
+  // Helper function to handle light errors
+  const handleLightError = (result: { success: boolean; error?: string }, lightEffect: string) => {
+    if (!result.success && result.error) {
+      showToast(`Error Playing Light: ${lightEffect}`);
+    }
+  };
+
+  // Helper function to trigger default light with error handling
+  const triggerDefaultLight = async () => {
+    const result = await triggerLight('default', lightSettings);
+    handleLightError(result, 'Default');
+  };
+
+  // Helper function to trigger loss light with error handling
+  const triggerLossLight = async () => {
+    const result = await triggerLight('loss', lightSettings);
+    handleLightError(result, 'Loss');
+  };
 
   // Save current game state
   const saveGameState = () => {
@@ -144,7 +184,7 @@ export default function Home() {
     }
   }, [buyInModal.open]);
 
-  const handleNumberClick = (num: number) => {
+  const handleNumberClick = async (num: number) => {
     // Determine result for history
     let result: RollResult = 'normal';
     if (point === null) {
@@ -196,13 +236,20 @@ export default function Home() {
         newLevel = 6;
       }
       
-      // Only trigger light if level increased
+      // Always trigger fire bet light when a point is hit
       if (newLevel > fireBetWinLevel) {
         setFireBetWinLevel(newLevel);
-        triggerFireBet(newLevel);
+        const result = await triggerFireBet(newLevel, lightSettings);
+        handleLightError(result, `Fire Bet ${newLevel}`);
         console.log(`FIRE BET LEVEL ${newLevel}!`);
       } else {
         setFireBetWinLevel(newLevel);
+        // Trigger current level's fire bet light even if level didn't increase
+        if (newLevel > 0) {
+          const result = await triggerFireBet(newLevel, lightSettings);
+          handleLightError(result, `Fire Bet ${newLevel}`);
+          console.log(`FIRE BET LEVEL ${newLevel} (repeated)!`);
+        }
       }
     }
 
@@ -213,22 +260,24 @@ export default function Home() {
       } else if (num === 7 || num === 11) {
         setWinLoss('win');
         setCurrentLight('win');
-        triggerLight('win');
+        const result = await triggerLight('win', lightSettings);
+        handleLightError(result, 'Win');
         console.log('WIN');
         // After win duration, return to default
         setTimeout(() => {
           setCurrentLight('default');
-          triggerLight('default');
+          triggerDefaultLight();
         }, winLightDuration * 1000);
       } else if ([2, 3, 12].includes(num)) {
         setWinLoss('loss');
         setCurrentLight('loss');
-        triggerLight('loss');
+        const result = await triggerLight('loss', lightSettings);
+        handleLightError(result, 'Loss');
         console.log('LOSS');
         // After loss duration, return to default
         setTimeout(() => {
           setCurrentLight('default');
-          triggerLight('default');
+          triggerDefaultLight();
         }, lossLightDuration * 1000);
       }
       // Other numbers do nothing
@@ -244,7 +293,7 @@ export default function Home() {
           // After win duration, return to default
           setTimeout(() => {
             setCurrentLight('default');
-            triggerLight('default');
+            triggerDefaultLight();
           }, winLightDuration * 1000);
         }
         // If another point is on, do nothing (cannot change point except by hitting same or 7)
@@ -258,11 +307,12 @@ export default function Home() {
         setFireBetNumbers(new Set());
         setFireBetWinLevel(0);
         
-        triggerLight('loss');
+        const result = await triggerLight('loss', lightSettings);
+        handleLightError(result, 'Loss');
         // After loss duration, return to default
         setTimeout(() => {
           setCurrentLight('default');
-          triggerLight('default');
+          triggerDefaultLight();
         }, lossLightDuration * 1000);
         // Handle player switching based on auto-change setting
         if (players.filter(p => p.enabled).length > 1) {
@@ -285,7 +335,7 @@ export default function Home() {
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // Don't handle if modals are open or if typing in input fields
-      if (buyInModal.open || settingsOpen) return;
+      if (buyInModal.open || settingsOpen || lightSettingsOpen) return;
       
       const key = event.key;
       const code = event.code;
@@ -360,14 +410,15 @@ export default function Home() {
   }, [buyInModal.open, settingsOpen, point, numpadMode]);
 
   // Helper to advance shooter to next enabled player
-  const advanceShooter = () => {
+  const advanceShooter = async () => {
     if (players.filter(p => p.enabled).length <= 1) return; // Only advance if more than one enabled
     const currentIdx = players.findIndex(p => p.id === shooter);
     let nextIdx = (currentIdx + 1) % players.length;
     while (!players[nextIdx].enabled || players[nextIdx].id === shooter) {
       nextIdx = (nextIdx + 1) % players.length;
     }
-    triggerPlayerChange(players[nextIdx].id);
+    const result = await triggerPlayerChange(players[nextIdx].id, lightSettings);
+    handleLightError(result, `Player Change ${players[nextIdx].id}`);
     setShooter(players[nextIdx].id);
     setShouldSwitchPlayer(false);
     
@@ -383,12 +434,12 @@ export default function Home() {
     setTimeout(() => {
       setCurrentLight('default');
       setCurrentPlayerLight(null);
-      triggerLight('default');
+      triggerDefaultLight();
     }, 2000);
   };
 
   // Manual shooter selection
-  const handleShooterSelect = (id: number) => {
+  const handleShooterSelect = async (id: number) => {
     setShooter(id);
     setShouldSwitchPlayer(false);
     
@@ -399,13 +450,14 @@ export default function Home() {
     // Trigger player change light
     setCurrentLight('player');
     setCurrentPlayerLight(id);
-    triggerPlayerChange(id);
+    const result = await triggerPlayerChange(id, lightSettings);
+    handleLightError(result, `Player Change ${id}`);
     
     // Return to default after a short delay
     setTimeout(() => {
       setCurrentLight('default');
       setCurrentPlayerLight(null);
-      triggerLight('default');
+      triggerDefaultLight();
     }, 2000);
   };
 
@@ -435,6 +487,9 @@ export default function Home() {
       setLossLightDuration(savedData.settings.lossLightDuration);
       setNumpadMode(savedData.settings.numpadMode);
       setAutoChangePlayers(savedData.settings.autoChangePlayers);
+      if (savedData.settings.lightSettings) {
+        setLightSettings(savedData.settings.lightSettings);
+      }
       if (savedData.fireBetNumbers) {
         setFireBetNumbers(new Set(savedData.fireBetNumbers));
         setFireBetWinLevel(savedData.fireBetWinLevel);
@@ -457,6 +512,7 @@ export default function Home() {
         lossLightDuration,
         numpadMode,
         autoChangePlayers,
+        lightSettings,
       },
       fireBetNumbers: Array.from(fireBetNumbers),
       fireBetWinLevel,
@@ -464,7 +520,7 @@ export default function Home() {
       hitCounts,
     };
     saveToLocalStorage(dataToSave);
-  }, [players, winLightDuration, lossLightDuration, numpadMode, autoChangePlayers, fireBetNumbers, fireBetWinLevel, history, hitCounts]);
+  }, [players, winLightDuration, lossLightDuration, numpadMode, autoChangePlayers, lightSettings, fireBetNumbers, fireBetWinLevel, history, hitCounts]);
 
   // For bar graph
   const maxHits = Math.max(...Object.values(hitCounts));
@@ -746,6 +802,23 @@ export default function Home() {
         onLossDurationChange={setLossLightDuration}
         onNumpadModeChange={setNumpadMode}
         onAutoChangePlayersChange={setAutoChangePlayers}
+        onOpenLightSettings={() => setLightSettingsOpen(true)}
+      />
+
+      {/* Light Settings Modal */}
+      <LightSettingsModal
+        open={lightSettingsOpen}
+        onClose={() => setLightSettingsOpen(false)}
+        settings={lightSettings}
+        onSettingsChange={setLightSettings}
+      />
+
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={closeToast}
       />
     </>
   );

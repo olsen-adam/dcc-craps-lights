@@ -11,6 +11,7 @@ interface SettingsModalProps {
   onLossDurationChange: (duration: number) => void;
   onNumpadModeChange: (enabled: boolean) => void;
   onAutoChangePlayersChange: (enabled: boolean) => void;
+  onOpenLightSettings: () => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -23,7 +24,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onWinDurationChange,
   onLossDurationChange,
   onNumpadModeChange,
-  onAutoChangePlayersChange
+  onAutoChangePlayersChange,
+  onOpenLightSettings
 }) => {
   if (!open) return null;
 
@@ -137,6 +139,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <span>1s</span>
               <span>10s</span>
             </div>
+          </div>
+
+          {/* Light Settings Button */}
+          <div>
+            <button
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              onClick={onOpenLightSettings}
+            >
+              Configure LED Light Effects
+            </button>
+            <p className="text-xs text-gray-500 mt-1">
+              Set IP address, effects, speed, pixel length, and colors for each light type
+            </p>
           </div>
         </div>
 
