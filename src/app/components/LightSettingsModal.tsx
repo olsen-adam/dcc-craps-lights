@@ -182,7 +182,7 @@ const LightSettingsModal: React.FC<LightSettingsModalProps> = ({
               type="text"
               value={localSettings.ipAddress}
               onChange={(e) => setLocalSettings(prev => ({ ...prev, ipAddress: e.target.value }))}
-              placeholder="http://192.168.1.77"
+              placeholder="https://dcclights.netlify.app/.netlify/functions/led-proxy"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
             />
           </div>

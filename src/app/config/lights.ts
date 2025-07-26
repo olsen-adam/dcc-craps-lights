@@ -35,7 +35,7 @@ export interface LightSettings {
 
 // Default light settings
 export const DEFAULT_LIGHT_SETTINGS: LightSettings = {
-  ipAddress: 'http://192.168.1.77',
+  ipAddress: 'https://dcclights.netlify.app/.netlify/functions/led-proxy',
   effects: {
     default: [
       { fx: 15, sx: 110, ix: 90, r: 255, g: 255, b: 0 },

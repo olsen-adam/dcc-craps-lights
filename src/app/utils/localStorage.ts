@@ -86,7 +86,7 @@ export const getDefaultSettings = (): Settings => ({
   autoChangePlayers: false,
   playSounds: false,
   lightSettings: {
-    ipAddress: 'http://192.168.1.77',
+    ipAddress: 'https://dcclights.netlify.app/.netlify/functions/led-proxy',
     effects: {
       default: [
         { fx: 15, sx: 110, ix: 90, r: 255, g: 255, b: 0 },
