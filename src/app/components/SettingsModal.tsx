@@ -7,10 +7,12 @@ interface SettingsModalProps {
   lossDuration: number;
   numpadMode: boolean;
   autoChangePlayers: boolean;
+  playSounds: boolean;
   onWinDurationChange: (duration: number) => void;
   onLossDurationChange: (duration: number) => void;
   onNumpadModeChange: (enabled: boolean) => void;
   onAutoChangePlayersChange: (enabled: boolean) => void;
+  onPlaySoundsChange: (enabled: boolean) => void;
   onOpenLightSettings: () => void;
 }
 
@@ -21,10 +23,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   lossDuration,
   numpadMode,
   autoChangePlayers,
+  playSounds,
   onWinDurationChange,
   onLossDurationChange,
   onNumpadModeChange,
   onAutoChangePlayersChange,
+  onPlaySoundsChange,
   onOpenLightSettings
 }) => {
   if (!open) return null;
@@ -95,6 +99,37 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               {autoChangePlayers 
                 ? "Automatically advance to next player after a loss (seven out)."
                 : "Show 'Swap Players?' button after a loss for manual player change."
+              }
+            </p>
+          </div>
+
+          {/* Play Sounds Toggle */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-sm font-semibold text-gray-700">
+                Play Sounds (Beta)
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-800 rounded-full">BETA</span>
+              </label>
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    playSounds ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                  onClick={() => onPlaySoundsChange(!playSounds)}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      playSounds ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">
+              {playSounds 
+                ? "Play sound effects for wins, losses, and point hits."
+                : "Sound effects are disabled."
               }
             </p>
           </div>

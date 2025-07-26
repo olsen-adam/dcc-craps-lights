@@ -10,6 +10,7 @@ export interface Settings {
   lossLightDuration: number;
   numpadMode: boolean;
   autoChangePlayers: boolean;
+  playSounds: boolean;
   lightSettings: {
     ipAddress: string;
     effects: {
@@ -83,6 +84,7 @@ export const getDefaultSettings = (): Settings => ({
   lossLightDuration: 2,
   numpadMode: false,
   autoChangePlayers: false,
+  playSounds: false,
   lightSettings: {
     ipAddress: 'http://192.168.1.77',
     effects: {

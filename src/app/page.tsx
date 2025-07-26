@@ -14,6 +14,7 @@ import {
   type Player,
   type Settings 
 } from "./utils/localStorage";
+import { playSound } from "./utils/sounds";
 
 const POINT_NUMBERS = [4, 5, 6, 8, 9, 10];
 const ALL_NUMBERS = Array.from({ length: 11 }, (_, i) => i + 2);
@@ -76,6 +77,7 @@ export default function Home() {
   const [lossLightDuration, setLossLightDuration] = useState<number>(getDefaultSettings().lossLightDuration);
   const [numpadMode, setNumpadMode] = useState<boolean>(getDefaultSettings().numpadMode);
   const [autoChangePlayers, setAutoChangePlayers] = useState<boolean>(getDefaultSettings().autoChangePlayers);
+  const [playSounds, setPlaySounds] = useState<boolean>(getDefaultSettings().playSounds);
   const [lightSettings, setLightSettings] = useState<LightSettings>(DEFAULT_LIGHT_SETTINGS);
 
   // Toast state
@@ -262,6 +264,9 @@ export default function Home() {
         setCurrentLight('win');
         const result = await triggerLight('win', lightSettings);
         handleLightError(result, 'Win');
+        if (playSounds) {
+          playSound('win');
+        }
         console.log('WIN');
         // After win duration, return to default
         setTimeout(() => {
@@ -273,6 +278,9 @@ export default function Home() {
         setCurrentLight('loss');
         const result = await triggerLight('loss', lightSettings);
         handleLightError(result, 'Loss');
+        if (playSounds) {
+          playSound('loss');
+        }
         console.log('LOSS');
         // After loss duration, return to default
         setTimeout(() => {
@@ -287,6 +295,21 @@ export default function Home() {
         if (point === num) {
           setWinLoss('win');
           setCurrentLight('win');
+          if (playSounds) {
+            // Calculate the new FireBet level to determine which sound to play
+            const newFireBetNumbers = new Set(fireBetNumbers);
+            newFireBetNumbers.add(num);
+            const uniqueCount = newFireBetNumbers.size;
+            let newLevel = 0;
+            if (uniqueCount === 1) newLevel = 1;
+            else if (uniqueCount === 2) newLevel = 2;
+            else if (uniqueCount === 3) newLevel = 3;
+            else if (uniqueCount === 4) newLevel = 4;
+            else if (uniqueCount === 5) newLevel = 5;
+            else if (uniqueCount === 6) newLevel = 6;
+            
+            playSound('point', newLevel);
+          }
           console.log('WIN');
           setPoint(null); // Deselect if same point is rolled again
           // Don't trigger win light here - Fire Bet logic will handle the light
@@ -300,6 +323,9 @@ export default function Home() {
       } else if (num === 7) {
         setWinLoss('loss');
         setCurrentLight('loss');
+        if (playSounds) {
+          playSound('loss');
+        }
         console.log('LOSS');
         setPoint(null); // Clear point on 7
         
@@ -487,6 +513,7 @@ export default function Home() {
       setLossLightDuration(savedData.settings.lossLightDuration);
       setNumpadMode(savedData.settings.numpadMode);
       setAutoChangePlayers(savedData.settings.autoChangePlayers);
+      setPlaySounds(savedData.settings.playSounds ?? false);
       if (savedData.settings.lightSettings) {
         setLightSettings(savedData.settings.lightSettings);
       }
@@ -512,6 +539,7 @@ export default function Home() {
         lossLightDuration,
         numpadMode,
         autoChangePlayers,
+        playSounds,
         lightSettings,
       },
       fireBetNumbers: Array.from(fireBetNumbers),
@@ -520,7 +548,7 @@ export default function Home() {
       hitCounts,
     };
     saveToLocalStorage(dataToSave);
-  }, [players, winLightDuration, lossLightDuration, numpadMode, autoChangePlayers, lightSettings, fireBetNumbers, fireBetWinLevel, history, hitCounts]);
+  }, [players, winLightDuration, lossLightDuration, numpadMode, autoChangePlayers, playSounds, lightSettings, fireBetNumbers, fireBetWinLevel, history, hitCounts]);
 
   // For bar graph
   const maxHits = Math.max(...Object.values(hitCounts));
@@ -798,10 +826,12 @@ export default function Home() {
         lossDuration={lossLightDuration}
         numpadMode={numpadMode}
         autoChangePlayers={autoChangePlayers}
+        playSounds={playSounds}
         onWinDurationChange={setWinLightDuration}
         onLossDurationChange={setLossLightDuration}
         onNumpadModeChange={setNumpadMode}
         onAutoChangePlayersChange={setAutoChangePlayers}
+        onPlaySoundsChange={setPlaySounds}
         onOpenLightSettings={() => setLightSettingsOpen(true)}
       />
 
