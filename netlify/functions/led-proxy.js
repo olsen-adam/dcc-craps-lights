@@ -1,11 +1,22 @@
 const fetch = require('node-fetch');
 
 exports.handler = async (event, context) => {
-  // Enable CORS
+  // Enable CORS - allow all Netlify domains and local development
+  const origin = event.headers.origin || event.headers.Origin;
+  
+  // Allow any Netlify domain (including preview deployments) and localhost
+  const isAllowedOrigin = origin && (
+    origin.includes('netlify.app') || 
+    origin.includes('localhost') || 
+    origin.includes('127.0.0.1')
+  );
+  
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+    'Access-Control-Allow-Origin': isAllowedOrigin ? origin : 'https://dcclights.netlify.app',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400'
   };
 
   // Handle preflight requests
