@@ -1,13 +1,13 @@
 // Light API Configuration
 export const LIGHT_CONFIG = {
   // Default light for any number roll
-  default: '/api/lights/default',
+  default: 'http://192.168.1.77/win&FX=15&SX=110&IX=90&R=255&G=255&B=0',
   
   // Win light (7/11 on come-out, or point hit)
-  win: '/api/lights/win',
+  win: 'http://192.168.1.77/win&FX=16&SX=255&IX=31&R=0&G=255&B=0',
   
   // Loss light (2/3/12 on come-out, or 7-out)
-  loss: '/api/lights/loss',
+  loss: 'http://192.168.1.77/win&FX=78&SX=210&IX=255&R=255&G=0&B=0',
   
   // Player change lights (one for each player position)
   playerChange1: '/api/lights/player-change/1',
@@ -26,12 +26,12 @@ export const LIGHT_CONFIG = {
   clear: '/api/lights/clear',
   
   // Fire Bet lights (for different win levels)
-  fireBet1: '/api/lights/fire-bet/1',
-  fireBet2: '/api/lights/fire-bet/2',
-  fireBet3: '/api/lights/fire-bet/3',
-  fireBet4: '/api/lights/fire-bet/4',
-  fireBet5: '/api/lights/fire-bet/5',
-  fireBet6: '/api/lights/fire-bet/6'
+  fireBet1: 'http://192.168.1.77/win&FX=50&SX=10&IX=90&R=255&G=255&B=0',
+  fireBet2: 'http://192.168.1.77/win&FX=50&SX=80&IX=90&R=255&G=255&B=0',
+  fireBet3: 'http://192.168.1.77/win&FX=50&SX=150&IX=90&R=255&G=255&B=0',
+  fireBet4: 'http://192.168.1.77/win&FX=50&SX=190&IX=90&R=255&G=165&B=0',
+  fireBet5: 'http://192.168.1.77/win&FX=50&SX=230&IX=90&R=228&G=0&B=120',
+  fireBet6: 'http://192.168.1.77/win&FX=50&SX=230&IX=90&R=180&G=40&B=255'
 };
 
 // Helper function to trigger a light

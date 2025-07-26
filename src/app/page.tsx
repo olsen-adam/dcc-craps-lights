@@ -4,6 +4,14 @@ import PlayerCard from "./components/PlayerCard";
 import BuyInModal from "./components/BuyInModal";
 import SettingsModal from "./components/SettingsModal";
 import { triggerLight, triggerPlayerChange, triggerFireBet } from "./config/lights";
+import { 
+  loadFromLocalStorage, 
+  saveToLocalStorage, 
+  getDefaultPlayers, 
+  getDefaultSettings,
+  type Player,
+  type Settings 
+} from "./utils/localStorage";
 
 const POINT_NUMBERS = [4, 5, 6, 8, 9, 10];
 const ALL_NUMBERS = Array.from({ length: 11 }, (_, i) => i + 2);
@@ -48,17 +56,7 @@ export default function Home() {
   };
   const [previousState, setPreviousState] = useState<GameState | null>(null);
   // Player state: name, buy-in, enabled
-  const initialPlayers = [
-    { id: 1, name: '', buyIn: '', enabled: false },
-    { id: 2, name: '', buyIn: '', enabled: false },
-    { id: 3, name: '', buyIn: '', enabled: false },
-    { id: 4, name: '', buyIn: '', enabled: false },
-    { id: 5, name: '', buyIn: '', enabled: false },
-    { id: 6, name: '', buyIn: '', enabled: false },
-    { id: 7, name: '', buyIn: '', enabled: false },
-    { id: 8, name: '', buyIn: '', enabled: false },
-  ];
-  const [players, setPlayers] = useState(initialPlayers);
+  const [players, setPlayers] = useState<Player[]>(getDefaultPlayers());
 
   // Shooter must be enabled
   const [shooter, setShooter] = useState<number>(1);
@@ -71,10 +69,10 @@ export default function Home() {
 
   // Settings state
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
-  const [winLightDuration, setWinLightDuration] = useState<number>(3);
-  const [lossLightDuration, setLossLightDuration] = useState<number>(2);
-  const [numpadMode, setNumpadMode] = useState<boolean>(false);
-  const [autoChangePlayers, setAutoChangePlayers] = useState<boolean>(false);
+  const [winLightDuration, setWinLightDuration] = useState<number>(getDefaultSettings().winLightDuration);
+  const [lossLightDuration, setLossLightDuration] = useState<number>(getDefaultSettings().lossLightDuration);
+  const [numpadMode, setNumpadMode] = useState<boolean>(getDefaultSettings().numpadMode);
+  const [autoChangePlayers, setAutoChangePlayers] = useState<boolean>(getDefaultSettings().autoChangePlayers);
 
   // Light status state
   const [currentLight, setCurrentLight] = useState<'default' | 'win' | 'loss' | 'player'>('default');
@@ -428,6 +426,46 @@ export default function Home() {
     }
   }, [players, shooter]);
 
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    const savedData = loadFromLocalStorage();
+    if (savedData) {
+      setPlayers(savedData.players);
+      setWinLightDuration(savedData.settings.winLightDuration);
+      setLossLightDuration(savedData.settings.lossLightDuration);
+      setNumpadMode(savedData.settings.numpadMode);
+      setAutoChangePlayers(savedData.settings.autoChangePlayers);
+      if (savedData.fireBetNumbers) {
+        setFireBetNumbers(new Set(savedData.fireBetNumbers));
+        setFireBetWinLevel(savedData.fireBetWinLevel);
+      }
+      if (savedData.history) {
+        setHistory(savedData.history);
+      }
+      if (savedData.hitCounts) {
+        setHitCounts(savedData.hitCounts);
+      }
+    }
+  }, []);
+
+  // Save data to localStorage whenever players or settings change
+  useEffect(() => {
+    const dataToSave = {
+      players,
+      settings: {
+        winLightDuration,
+        lossLightDuration,
+        numpadMode,
+        autoChangePlayers,
+      },
+      fireBetNumbers: Array.from(fireBetNumbers),
+      fireBetWinLevel,
+      history,
+      hitCounts,
+    };
+    saveToLocalStorage(dataToSave);
+  }, [players, winLightDuration, lossLightDuration, numpadMode, autoChangePlayers, fireBetNumbers, fireBetWinLevel, history, hitCounts]);
+
   // For bar graph
   const maxHits = Math.max(...Object.values(hitCounts));
 
@@ -497,6 +535,8 @@ export default function Home() {
                         ALL_NUMBERS.forEach((n) => (counts[n] = 0));
                         return counts;
                       });
+                      setFireBetNumbers(new Set());
+                      setFireBetWinLevel(0);
                       setPreviousState(null);
                     }}
                   >
@@ -577,7 +617,7 @@ export default function Home() {
                 <button
                   className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
                   onClick={() => {
-                    setPlayers(initialPlayers);
+                    setPlayers(getDefaultPlayers());
                     setShooter(1);
                   }}
                 >
