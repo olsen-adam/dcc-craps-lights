@@ -321,20 +321,13 @@ export default function Home() {
         if (point === num) {
           setWinLoss('win');
           setCurrentLight('win');
-          if (playSounds) {
-            // Calculate the new FireBet level to determine which sound to play
-            const newFireBetNumbers = new Set(fireBetNumbers);
-            newFireBetNumbers.add(num);
-            const uniqueCount = newFireBetNumbers.size;
-            let newLevel = 0;
-            if (uniqueCount === 1) newLevel = 1;
-            else if (uniqueCount === 2) newLevel = 2;
-            else if (uniqueCount === 3) newLevel = 3;
-            else if (uniqueCount === 4) newLevel = 4;
-            else if (uniqueCount === 5) newLevel = 5;
-            else if (uniqueCount === 6) newLevel = 6;
-            
-            playSound('point', newLevel);
+          
+          // Check if this is a Fire Bet scenario
+          const isFireBetScenario = fireBetNumbers.has(num);
+          
+          if (playSounds && !isFireBetScenario) {
+            // Only play sound if it's not a Fire Bet scenario (Fire Bet logic will handle sounds)
+            playSound('win');
           }
           console.log('WIN');
           setPoint(null); // Deselect if same point is rolled again
