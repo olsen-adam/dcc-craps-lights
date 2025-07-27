@@ -175,7 +175,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             <input
               type="range"
               min="1"
-              max="10"
+              max="30"
               step="0.5"
               value={winDuration}
               onChange={(e) => onWinDurationChange(parseFloat(e.target.value))}
@@ -183,7 +183,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>1s</span>
-              <span>10s</span>
+              <span>30s</span>
             </div>
           </div>
 
@@ -196,7 +196,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             <input
               type="range"
               min="1"
-              max="10"
+              max="30"
               step="0.5"
               value={lossDuration}
               onChange={(e) => onLossDurationChange(parseFloat(e.target.value))}
@@ -204,7 +204,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>1s</span>
-              <span>10s</span>
+              <span>30s</span>
             </div>
           </div>
 
