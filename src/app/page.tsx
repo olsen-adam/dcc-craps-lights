@@ -246,6 +246,9 @@ export default function Home() {
         setFireBetWinLevel(newLevel);
         const result = await triggerFireBet(newLevel, lightSettings);
         handleLightError(result, `Fire Bet ${newLevel}`);
+        if (playSounds) {
+          playSound('point', newLevel);
+        }
         console.log(`FIRE BET LEVEL ${newLevel}!`);
       } else if (wasAlreadyHit) {
         // Same number hit again - check setting
@@ -253,11 +256,17 @@ export default function Home() {
           // Play the same fire bet light
           const result = await triggerFireBet(newLevel, lightSettings);
           handleLightError(result, `Fire Bet ${newLevel} (repeated)`);
+          if (playSounds) {
+            playSound('point', newLevel);
+          }
           console.log(`FIRE BET LEVEL ${newLevel} (repeated)!`);
         } else {
           // Play default win light
           const result = await triggerLight('win', lightSettings);
           handleLightError(result, 'Win (repeated Fire Bet)');
+          if (playSounds) {
+            playSound('win');
+          }
           console.log(`FIRE BET ${newLevel} repeated - playing win light`);
         }
       } else {
@@ -265,6 +274,9 @@ export default function Home() {
         setFireBetWinLevel(newLevel);
         const result = await triggerFireBet(newLevel, lightSettings);
         handleLightError(result, `Fire Bet ${newLevel}`);
+        if (playSounds) {
+          playSound('point', newLevel);
+        }
         console.log(`FIRE BET LEVEL ${newLevel} (different number)!`);
       }
     }
