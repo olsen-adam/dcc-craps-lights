@@ -322,8 +322,8 @@ export default function Home() {
           setWinLoss('win');
           setCurrentLight('win');
           
-          // Check if this is a Fire Bet scenario
-          const isFireBetScenario = fireBetNumbers.has(num);
+          // Check if this is a Fire Bet scenario (any point number being hit)
+          const isFireBetScenario = POINT_NUMBERS.includes(num);
           
           if (playSounds && !isFireBetScenario) {
             // Only play sound if it's not a Fire Bet scenario (Fire Bet logic will handle sounds)
