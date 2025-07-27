@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DEFAULT_LIGHT_SETTINGS } from '../config/lights';
+import { DEFAULT_LIGHT_SETTINGS, triggerLight } from '../config/lights';
 
 export interface LightEffect {
   fx: number;
@@ -50,6 +50,7 @@ const LightSettingsModal: React.FC<LightSettingsModalProps> = ({
 }) => {
   const [localSettings, setLocalSettings] = useState<LightSettings>(settings);
   const [showResetConfirmation, setShowResetConfirmation] = useState<boolean>(false);
+  const [testingEffect, setTestingEffect] = useState<string | null>(null);
 
   // Update local settings when modal opens or settings prop changes
   useEffect(() => {
@@ -137,6 +138,35 @@ const LightSettingsModal: React.FC<LightSettingsModalProps> = ({
     return `${localSettings.ipAddress}/win&FX=${effect.fx}&SX=${effect.sx}&IX=${effect.ix}&R=${effect.r}&G=${effect.g}&B=${effect.b}`;
   };
 
+  const testLightEffect = async (effectKey: keyof LightSettings['effects'], index?: number) => {
+    setTestingEffect(`${effectKey}${index !== undefined ? `-${index}` : ''}`);
+    
+    try {
+      let result;
+      if (effectKey === 'default' && typeof index === 'number') {
+        // For default effects, we need to create a temporary settings object with just this effect
+        const tempSettings = {
+          ...localSettings,
+          effects: {
+            ...localSettings.effects,
+            default: [localSettings.effects.default[index]]
+          }
+        };
+        result = await triggerLight('default', tempSettings);
+      } else {
+        result = await triggerLight(effectKey, localSettings);
+      }
+      
+      if (!result.success) {
+        console.error(`Failed to test ${effectKey} light:`, result.error);
+      }
+    } catch (error) {
+      console.error(`Error testing ${effectKey} light:`, error);
+    } finally {
+      setTimeout(() => setTestingEffect(null), 1000);
+    }
+  };
+
   if (!open) return null;
 
   const effectLabels: Record<keyof LightSettings['effects'], string> = {
@@ -212,14 +242,38 @@ const LightSettingsModal: React.FC<LightSettingsModalProps> = ({
                       <div key={index} className="border border-gray-300 rounded-lg p-3 mb-3 bg-gray-50">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-medium text-gray-700">Default Effect {index + 1}</span>
-                          {effect.length > 1 && (
+                          <div className="flex gap-2">
                             <button
-                              onClick={() => removeDefaultEffect(index)}
-                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors duration-200"
+                              onClick={() => testLightEffect('default', index)}
+                              disabled={testingEffect === `default-${index}`}
+                              className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-xs rounded transition-colors duration-200 flex items-center gap-1"
                             >
-                              Remove
+                              {testingEffect === `default-${index}` ? (
+                                <>
+                                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Testing...
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  Test
+                                </>
+                              )}
                             </button>
-                          )}
+                            {effect.length > 1 && (
+                              <button
+                                onClick={() => removeDefaultEffect(index)}
+                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors duration-200"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div className="text-xs text-gray-500 font-mono mb-2">
                           {generateUrl(defaultEffect)}
@@ -327,8 +381,32 @@ const LightSettingsModal: React.FC<LightSettingsModalProps> = ({
                   <div key={key} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="font-semibold text-gray-700">{effectLabels[key as keyof LightSettings['effects']]}</h4>
-                      <div className="text-xs text-gray-500 font-mono">
-                        {generateUrl(effect)}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => testLightEffect(key as keyof LightSettings['effects'])}
+                          disabled={testingEffect === key}
+                          className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-xs rounded transition-colors duration-200 flex items-center gap-1"
+                        >
+                          {testingEffect === key ? (
+                            <>
+                              <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Testing...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Test
+                            </>
+                          )}
+                        </button>
+                        <div className="text-xs text-gray-500 font-mono">
+                          {generateUrl(effect)}
+                        </div>
                       </div>
                     </div>
                     
