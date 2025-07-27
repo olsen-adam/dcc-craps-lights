@@ -78,6 +78,7 @@ export default function Home() {
   const [numpadMode, setNumpadMode] = useState<boolean>(getDefaultSettings().numpadMode);
   const [autoChangePlayers, setAutoChangePlayers] = useState<boolean>(getDefaultSettings().autoChangePlayers);
   const [playSounds, setPlaySounds] = useState<boolean>(getDefaultSettings().playSounds);
+  const [repeatFireBetLight, setRepeatFireBetLight] = useState<boolean>(getDefaultSettings().repeatFireBetLight);
   const [lightSettings, setLightSettings] = useState<LightSettings>(DEFAULT_LIGHT_SETTINGS);
 
   // Toast state
@@ -218,6 +219,7 @@ export default function Home() {
     // Handle Fire Bet logic - only count if point is established and then hit
     if (point !== null && POINT_NUMBERS.includes(num) && point === num) {
       const newFireBetNumbers = new Set(fireBetNumbers);
+      const wasAlreadyHit = newFireBetNumbers.has(num);
       newFireBetNumbers.add(num);
       setFireBetNumbers(newFireBetNumbers);
       
@@ -238,20 +240,32 @@ export default function Home() {
         newLevel = 6;
       }
       
-      // Always trigger fire bet light when a point is hit
+      // Handle light triggering based on whether this is a new hit or repeat
       if (newLevel > fireBetWinLevel) {
+        // New level achieved - always trigger fire bet light
         setFireBetWinLevel(newLevel);
         const result = await triggerFireBet(newLevel, lightSettings);
         handleLightError(result, `Fire Bet ${newLevel}`);
         console.log(`FIRE BET LEVEL ${newLevel}!`);
-      } else {
-        setFireBetWinLevel(newLevel);
-        // Trigger current level's fire bet light even if level didn't increase
-        if (newLevel > 0) {
+      } else if (wasAlreadyHit) {
+        // Same number hit again - check setting
+        if (repeatFireBetLight) {
+          // Play the same fire bet light
           const result = await triggerFireBet(newLevel, lightSettings);
-          handleLightError(result, `Fire Bet ${newLevel}`);
+          handleLightError(result, `Fire Bet ${newLevel} (repeated)`);
           console.log(`FIRE BET LEVEL ${newLevel} (repeated)!`);
+        } else {
+          // Play default win light
+          const result = await triggerLight('win', lightSettings);
+          handleLightError(result, 'Win (repeated Fire Bet)');
+          console.log(`FIRE BET ${newLevel} repeated - playing win light`);
         }
+      } else {
+        // Same level but different number - trigger current level's fire bet light
+        setFireBetWinLevel(newLevel);
+        const result = await triggerFireBet(newLevel, lightSettings);
+        handleLightError(result, `Fire Bet ${newLevel}`);
+        console.log(`FIRE BET LEVEL ${newLevel} (different number)!`);
       }
     }
 
@@ -514,6 +528,7 @@ export default function Home() {
       setNumpadMode(savedData.settings.numpadMode);
       setAutoChangePlayers(savedData.settings.autoChangePlayers);
       setPlaySounds(savedData.settings.playSounds ?? false);
+      setRepeatFireBetLight(savedData.settings.repeatFireBetLight ?? true);
       if (savedData.settings.lightSettings) {
         setLightSettings(savedData.settings.lightSettings);
       }
@@ -540,6 +555,7 @@ export default function Home() {
         numpadMode,
         autoChangePlayers,
         playSounds,
+        repeatFireBetLight,
         lightSettings,
       },
       fireBetNumbers: Array.from(fireBetNumbers),
@@ -548,7 +564,7 @@ export default function Home() {
       hitCounts,
     };
     saveToLocalStorage(dataToSave);
-  }, [players, winLightDuration, lossLightDuration, numpadMode, autoChangePlayers, playSounds, lightSettings, fireBetNumbers, fireBetWinLevel, history, hitCounts]);
+  }, [players, winLightDuration, lossLightDuration, numpadMode, autoChangePlayers, playSounds, repeatFireBetLight, lightSettings, fireBetNumbers, fireBetWinLevel, history, hitCounts]);
 
   // For bar graph
   const maxHits = Math.max(...Object.values(hitCounts));
@@ -827,11 +843,13 @@ export default function Home() {
         numpadMode={numpadMode}
         autoChangePlayers={autoChangePlayers}
         playSounds={playSounds}
+        repeatFireBetLight={repeatFireBetLight}
         onWinDurationChange={setWinLightDuration}
         onLossDurationChange={setLossLightDuration}
         onNumpadModeChange={setNumpadMode}
         onAutoChangePlayersChange={setAutoChangePlayers}
         onPlaySoundsChange={setPlaySounds}
+        onRepeatFireBetLightChange={setRepeatFireBetLight}
         onOpenLightSettings={() => setLightSettingsOpen(true)}
       />
 

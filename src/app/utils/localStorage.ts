@@ -11,6 +11,7 @@ export interface Settings {
   numpadMode: boolean;
   autoChangePlayers: boolean;
   playSounds: boolean;
+  repeatFireBetLight: boolean;
   lightSettings: {
     ipAddress: string;
     effects: {
@@ -85,6 +86,7 @@ export const getDefaultSettings = (): Settings => ({
   numpadMode: false,
   autoChangePlayers: false,
   playSounds: false,
+  repeatFireBetLight: true,
   lightSettings: {
     ipAddress: 'http://192.168.1.77',
     effects: {
